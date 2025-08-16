@@ -1,4 +1,4 @@
-BotCraft — Your GenAI FAQ Bot Ambassador
+**BotCraft — Your GenAI FAQ Bot Ambassador**
 
 BotCraft is a ready-to-use FAQ bot powered by Generative AI.
 No coding, no API keys — just download, open, and set it up using the built-in interface.
