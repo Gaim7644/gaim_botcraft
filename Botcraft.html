@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personalized Chatbot</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- React Libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel to transpile JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /* Apply the Inter font globally */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* TailwindCSS Prose styles for Markdown */
+        .prose {
+            max-width: 100% !important;
+        }
+        .prose strong {
+            font-weight: 700;
+        }
+        .prose-invert strong {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // --- Self-Contained React Application ---
+        
+        // Custom hook for using localStorage
+        function useLocalStorage(key, initialValue) {
+            const [storedValue, setStoredValue] = React.useState(() => {
+                try {
+                    const item = window.localStorage.getItem(key);
+                    return item ? JSON.parse(item) : initialValue;
+                } catch (error) {
+                    console.error(error);
+                    return initialValue;
+                }
+            });
+
+            const setValue = (value) => {
+                try {
+                    const valueToStore = value instanceof Function ? value(storedValue) : value;
+                    setStoredValue(valueToStore);
+                    window.localStorage.setItem(key, JSON.stringify(valueToStore));
+                } catch (error) {
+                    console.error(error);
+                }
+            };
+
+            return [storedValue, setValue];
+        }
+
+        // --- Theme Data ---
+        const themeOptions = [
+            { name: 'light', label: 'Light', colors: ['bg-gray-100', 'bg-white', 'bg-blue-500'] },
+            { name: 'dark', label: 'Dark', colors: ['bg-gray-800', 'bg-gray-700', 'bg-indigo-500'] },
+            { name: 'ocean', label: 'Ocean', colors: ['bg-blue-50', 'bg-white', 'bg-cyan-500'] },
+            { name: 'mint', label: 'Mint', colors: ['bg-green-50', 'bg-white', 'bg-emerald-500'] },
+        ];
+
+        const themeStyles = {
+            light: { container: 'bg-gray-100', header: 'bg-white', botBubble: 'bg-white text-gray-800 shadow-sm', userBubble: 'bg-blue-500 text-white', inputContainer: 'bg-white', input: 'bg-gray-100 text-gray-800 placeholder-gray-500', sendButton: 'bg-blue-500 hover:bg-blue-600' },
+            dark: { container: 'bg-gray-800', header: 'bg-gray-900', botBubble: 'bg-gray-700 text-gray-200', userBubble: 'bg-indigo-500 text-white', inputContainer: 'bg-gray-900', input: 'bg-gray-700 text-gray-200 placeholder-gray-400', sendButton: 'bg-indigo-500 hover:bg-indigo-600' },
+            ocean: { container: 'bg-blue-50', header: 'bg-white', botBubble: 'bg-white text-gray-800 shadow-sm', userBubble: 'bg-cyan-500 text-white', inputContainer: 'bg-white', input: 'bg-blue-100 text-gray-800 placeholder-gray-500', sendButton: 'bg-cyan-500 hover:bg-cyan-600' },
+            mint: { container: 'bg-green-50', header: 'bg-white', botBubble: 'bg-white text-gray-800 shadow-sm', userBubble: 'bg-emerald-500 text-white', inputContainer: 'bg-white', input: 'bg-green-100 text-gray-800 placeholder-gray-500', sendButton: 'bg-emerald-500 hover:bg-emerald-600' }
+        };
+
+        // --- Components ---
+
+        const SettingsIcon = ({ onClick }) => ( <svg onClick={onClick} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="cursor-pointer text-gray-500 hover:text-gray-700"> <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path> <circle cx="12" cy="12" r="3"></circle> </svg> );
+        const Spinner = () => ( <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div> );
+
+        const Setup = ({ settings: currentSettings, setSettings }) => {
+            const [formData, setFormData] = React.useState({
+                companyName: currentSettings?.companyName || '',
+                companyDescription: currentSettings?.companyDescription || '',
+                chatbotTone: currentSettings?.chatbotTone || 'Friendly',
+                chatbotGender: currentSettings?.chatbotGender || 'Neutral',
+                faqText: currentSettings?.faqText || '',
+                welcomeMessage: currentSettings?.welcomeMessage || 'Hello! How can I help you today?',
+                theme: currentSettings?.theme || 'light',
+            });
+            const [isLoading, setIsLoading] = React.useState(false);
+            const [error, setError] = React.useState('');
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({ ...prev, [name]: value }));
+            };
+            
+            const generateAvatar = (gender, tone, company) => {
+                // This function now returns a Promise that resolves when the image is loaded
+                return new Promise((resolve, reject) => {
+                    let prompt;
+                    if (gender === 'Neutral') {
+                        // Use a more specific prompt for the "Neutral" option
+                        prompt = `A simple, modern, 2D cartoon avatar for a friendly, neutral robot chatbot for a company called "${company}". It should be abstract and gender-neutral, perhaps with glowing eyes or a sleek, metallic finish. The style should be clean, approachable, and professional, with a simple background.`;
+                    } else {
+                        // The original prompt for Male/Female
+                        prompt = `A simple, modern, 2D cartoon avatar for a ${gender}, ${tone.toLowerCase()} chatbot for a company called "${company}". The style should be clean, approachable, and professional, with a simple background.`;
+                    }
+                    
+                    const encodedPrompt = encodeURIComponent(prompt);
+                    const seed = Math.floor(Math.random() * 10000);
+                    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${seed}`;
+
+                    const img = new Image();
+                    img.onload = () => resolve(imageUrl);
+                    img.onerror = () => {
+                        console.error("Image failed to load from Pollinations.ai, using placeholder.");
+                        const placeholderUrl = `https://placehold.co/100x100/EBF4FF/3B82F6?text=${company.charAt(0) || 'C'}`;
+                        resolve(placeholderUrl);
+                    };
+                    img.src = imageUrl;
+                });
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!formData.companyName || !formData.companyDescription) {
+                    setError('Company Name and Description are required.');
+                    return;
+                }
+                setError('');
+                setIsLoading(true);
+                try {
+                    let avatarUrl = currentSettings?.avatarUrl;
+                    const needsNewAvatar = !avatarUrl || currentSettings?.companyName !== formData.companyName || currentSettings?.chatbotGender !== formData.chatbotGender || currentSettings?.chatbotTone !== formData.chatbotTone;
+                    
+                    if (needsNewAvatar) {
+                        avatarUrl = await generateAvatar(formData.chatbotGender, formData.chatbotTone, formData.companyName);
+                    }
+
+                    const newSettings = { ...currentSettings, ...formData, avatarUrl, isConfigured: true };
+                    setSettings(newSettings);
+                } catch (err) {
+                    console.error("Error during setup:", err);
+                    setError('Failed to save settings. Please try again.');
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 font-sans">
+                    <div className="max-w-2xl w-full bg-white p-8 rounded-2xl shadow-lg">
+                        <h1 className="text-3xl font-bold text-gray-800 mb-2">Personalize Your Chatbot</h1>
+                        <p className="text-gray-500 mb-8">This information will help us create a unique chatbot for your company.</p>
+                        {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-6" role="alert">{error}</div>}
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div>
+                                <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                                <input type="text" name="companyName" id="companyName" required className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" value={formData.companyName} onChange={handleChange} placeholder="e.g., Innovate Inc." />
+                            </div>
+                            <div>
+                                <label htmlFor="companyDescription" className="block text-sm font-medium text-gray-700 mb-1">Company Description</label>
+                                <textarea name="companyDescription" id="companyDescription" required rows="3" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" value={formData.companyDescription} onChange={handleChange} placeholder="Describe what your company does, its values, and its mission."></textarea>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label htmlFor="chatbotTone" className="block text-sm font-medium text-gray-700 mb-1">Chatbot Tone</label>
+                                    <select name="chatbotTone" id="chatbotTone" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white" value={formData.chatbotTone} onChange={handleChange}>
+                                        <option>Friendly</option><option>Professional</option><option>Witty</option><option>Formal</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="chatbotGender" className="block text-sm font-medium text-gray-700 mb-1">Chatbot Gender (for avatar)</label>
+                                    <select name="chatbotGender" id="chatbotGender" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white" value={formData.chatbotGender} onChange={handleChange}>
+                                        <option>Neutral</option><option>Female</option><option>Male</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Chat Theme</label>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {themeOptions.map(theme => (
+                                        <label key={theme.name} className={`cursor-pointer border-2 rounded-lg p-3 text-center ${formData.theme === theme.name ? 'border-blue-500' : 'border-gray-200'}`}>
+                                            <input type="radio" name="theme" value={theme.name} className="sr-only" onChange={handleChange} checked={formData.theme === theme.name} />
+                                            <div className="flex justify-center space-x-1 mb-2">
+                                                {theme.colors.map((color, index) => <div key={index} className={`w-5 h-5 rounded-full ${color}`}></div>)}
+                                            </div>
+                                            <span className="text-sm font-medium text-gray-700">{theme.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label htmlFor="faqText" className="block text-sm font-medium text-gray-700 mb-1">Company FAQ Content</label>
+                                <textarea name="faqText" id="faqText" rows="6" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" value={formData.faqText} onChange={handleChange} placeholder="Paste your company's frequently asked questions and answers here."></textarea>
+                            </div>
+                            <div>
+                                <label htmlFor="welcomeMessage" className="block text-sm font-medium text-gray-700 mb-1">Custom Welcome Message</label>
+                                <input type="text" name="welcomeMessage" id="welcomeMessage" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" value={formData.welcomeMessage} onChange={handleChange} />
+                            </div>
+                            <div className="pt-4">
+                                <button type="submit" disabled={isLoading} className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 flex items-center justify-center">
+                                    {isLoading ? <Spinner /> : 'Save Settings'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        const Chat = ({ settings, resetSettings }) => {
+            const [messages, setMessages] = React.useState([]);
+            const [input, setInput] = React.useState('');
+            const [isTyping, setIsTyping] = React.useState(false);
+            const messagesEndRef = React.useRef(null);
+            const activeTheme = themeStyles[settings.theme] || themeStyles.light;
+
+            React.useEffect(() => {
+                if (messages.length === 0) {
+                    setMessages([{ text: settings.welcomeMessage || 'Hello! How can I help you today?', sender: 'bot', id: Date.now() }]);
+                }
+            }, [settings.welcomeMessage, messages.length]);
+
+            React.useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+            const generateChatResponse = React.useCallback(async (chatHistory) => {
+                setIsTyping(true);
+                
+                let systemPrompt = `You are an expert customer support representative for "${settings.companyName}". Your name is "${settings.companyName} Assistant".
+        You must adopt a confident, authoritative, and ${settings.chatbotTone.toLowerCase()} tone.
+        You are speaking directly to a customer. Your goal is to answer their questions based *only* on the information provided below.
+        **Crucially, do not mention that you are an AI, a bot, or that you are referencing a document. Just answer the questions naturally as if you are a knowledgeable representative of the company.**
+
+        Here is your knowledge base:
+        Company Description: "${settings.companyDescription}".
+        `;
+
+                if (settings.faqText && settings.faqText.trim() !== '') {
+                    systemPrompt += `\nCompany FAQs:\n${settings.faqText}\n`;
+                }
+
+                systemPrompt += `\nBased on the knowledge base above and the conversation history, please answer the user's question. 
+        **If the answer is not in your knowledge base, you must respond confidently that you cannot provide that specific information and pivot to what you can help with. Do not apologize or express inability.** For example, instead of "I'm sorry, I don't know", say something like "That level of detail isn't available. However, I can assist with questions about our products, services, and general policies." Tailor the pivot to the company's context. Do not guess the answer.`;
+
+                const contents = [
+                    { role: "user", parts: [{ text: systemPrompt }] },
+                    { role: "model", parts: [{ text: "Understood. I will act as a confident and knowledgeable representative." }] },
+                    ...chatHistory.slice(-6).map(msg => ({ role: msg.sender === 'user' ? 'user' : 'model', parts: [{ text: msg.text }] }))
+                ];
+                
+                const payload = { contents };
+                // NOTE: You will still need to add your Gemini API key for the chat to work.
+                const apiKey = "AIzaSyAyIky7YX5IIYHU_iibQlXWhdpqHoQI3do"; 
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                try {
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const result = await response.json();
+                    if (result.candidates && result.candidates[0]?.content?.parts[0]?.text) {
+                        const botResponse = result.candidates[0].content.parts[0].text;
+                        setMessages(prev => [...prev, { text: botResponse, sender: 'bot', id: Date.now() }]);
+                    } else {
+                        setMessages(prev => [...prev, { text: "Sorry, I couldn't process that. Can you try rephrasing?", sender: 'bot', id: Date.now() }]);
+                    }
+                } catch (error) {
+                    setMessages(prev => [...prev, { text: "I'm having trouble connecting right now. Please try again later.", sender: 'bot', id: Date.now() }]);
+                } finally {
+                    setIsTyping(false);
+                }
+            }, [settings]);
+
+            const handleSend = () => { if (input.trim()) { const userMessage = { text: input, sender: 'user', id: Date.now() }; const newMessages = [...messages, userMessage]; setMessages(newMessages); setInput(''); generateChatResponse(newMessages); } };
+
+            return (
+                <div className={`h-screen w-screen flex flex-col font-sans ${activeTheme.container}`}>
+                    <header className={`shadow-sm p-4 flex items-center justify-between z-10 ${activeTheme.header}`}>
+                        <div className="flex items-center space-x-4">
+                            <img src={settings.avatarUrl} alt="Chatbot Avatar" className="w-12 h-12 rounded-full object-cover border-2 border-blue-200" />
+                            <div>
+                                <h1 className={`text-xl font-bold ${activeTheme.header === 'bg-white' ? 'text-gray-800' : 'text-gray-100'}`}>{settings.companyName} Assistant</h1>
+                                <p className="text-sm text-green-500 font-semibold">Online</p>
+                            </div>
+                        </div>
+                        <SettingsIcon onClick={resetSettings} />
+                    </header>
+                    <main className="flex-1 overflow-y-auto p-6 space-y-4">
+                        {messages.map((msg) => (
+                            <div key={msg.id} className={`flex items-end gap-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                {msg.sender === 'bot' && <img src={settings.avatarUrl} alt="bot avatar" className="w-8 h-8 rounded-full self-start" />}
+                                <div className={`max-w-xs md:max-w-md lg:max-w-2xl px-4 py-3 rounded-2xl ${msg.sender === 'user' ? `${activeTheme.userBubble} rounded-br-lg` : `${activeTheme.botBubble} rounded-bl-lg`}`}>
+                                    <div
+                                        className={`text-sm prose prose-sm max-w-none ${activeTheme.name === 'dark' ? 'prose-invert' : ''}`}
+                                        dangerouslySetInnerHTML={{ __html: msg.sender === 'bot' && window.marked ? window.marked.parse(msg.text) : msg.text.replace(/\n/g, '<br />') }}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                        {isTyping && (
+                            <div className="flex items-end gap-2 justify-start">
+                                <img src={settings.avatarUrl} alt="bot avatar" className="w-8 h-8 rounded-full self-start" />
+                                <div className={`${activeTheme.botBubble} rounded-2xl rounded-bl-lg px-4 py-3`}>
+                                    <div className="flex items-center justify-center space-x-1">
+                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-75"></span>
+                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150"></span>
+                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-300"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={messagesEndRef} />
+                    </main>
+                    <footer className={`p-4 ${activeTheme.inputContainer}`}>
+                        <div className={`flex items-center rounded-full px-4 py-2 ${activeTheme.input}`}>
+                            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSend()} placeholder="Type a message..." className="flex-1 bg-transparent border-none focus:ring-0" />
+                            <button onClick={handleSend} className={`ml-3 text-white rounded-full p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 ${activeTheme.sendButton}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                            </button>
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+
+        function App() {
+            const [settings, setSettings] = useLocalStorage('chatbotSettings', { isConfigured: false, theme: 'light' });
+            const handleReset = () => { setSettings(prev => ({ ...prev, isConfigured: false })); };
+            if (settings && settings.isConfigured) {
+                return <Chat settings={settings} resetSettings={handleReset} />;
+            } else {
+                return <Setup settings={settings} setSettings={setSettings} />;
+            }
+        }
+
+        // --- This part renders your app to the page ---
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+
+    </script>
+</body>
+</html>
