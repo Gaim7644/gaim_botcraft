@@ -267,7 +267,7 @@
                 const payload = { contents };
                 // NOTE: You will still need to add your Gemini API key for the chat to work.
                 const apiKey = "AIzaSyAyIky7YX5IIYHU_iibQlXWhdpqHoQI3do"; 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=${apiKey}`;
                 try {
                     const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     const result = await response.json();
@@ -354,3 +354,4 @@
     </script>
 </body>
 </html>
+
